@@ -1,0 +1,117 @@
+什么是shiro
+shiro是apache旗下一个开源框架，它将软件系统的安全认证相关的功能抽取出来，实现用户身份认证、权限授权、加密、会话管理等功能，组成了一个通用的安全认证框架。
+
+shiro能做什么？
+
+(1)验证用户。
+(2)对用户执行访问控制，如: 判断用户是否拥有角色admin，判断用户是否拥有访问的权限。
+(3)在任何环境下使用Session API。例如CS程序。
+(4)可以使用多个用户数据源。例如一个是oracle用户库，另外一个是mysql用户库。
+(5)单点登录(SSO)功能。
+(6)"Remember Me"服务，类似购物车的功能，shiro官方建议开启
+
+
+shiro的组成
+
+认证Authenticator、
+授权Authorizer
+session
+管理SessionManager
+CacheManager即缓存管理
+Cryptography即密码管理
+
+
+比较 SpringSecurity 和 Shiro
+相比
+Spring Security, Shiro 在保持强大功能的同时, 使用简单性和灵活性
+SpringSecurity: 即使是一个一个简单的请求，最少得经过它的 8 个Filter
+SpringSecurity 必须在 Spring 的环境下使用
+初学 Spring Security, 曲线还是较大, 需要深入学习其源码和框架, 配置起来也较费力.
+
+
+
+Shiro认证过程
+
+①. 应用程序代码调用 Subject.login 方法，传递创建好的包含终端用户的 Principals(身份)和 Credentials(凭证)的 AuthenticationToken 实例
+
+
+②. Subject 实例委托应用程序的 SecurityManager 通过调用securityManager.login(token) 开始真正的验证。
+Subject 实例（通常为 DelegatingSubject或它的子类）
+
+
+③. SubjectManager 接收 token，调用内部的 Authenticator 实例调用 authenticator.authenticate(token).Authenticator 通常是一个 ModularRealmAuthenticator 实例, 支持在身份验证中协调一个或多个Realm 实例
+
+
+④. 如果应用程序中配置了一个以上的 Realm, ModularRealmAuthenticator 实例将利用配置好的AuthenticationStrategy 来启动 Multi-Realm 认证尝试。在Realms 被身份验证调用之前、调用期间、调用之后，AuthenticationStrategy 被调用使其能够对每个Realm 的结果作出反应。（AuthenticationStrategy都会被调用，对每个Realm 的结果作出反应）
+
+
+⑤. 每个配置的 Realm 用来帮助看它是否支持提交的 AuthenticationToken. 如果支持, 那么支持 Realm 的 getAuthenticationInfo 方法将会伴随着提交的 token 被调用. getAuthenticationInfo 方法有效地代表一个特定 Realm 的单一的身份验证尝试。
+
+
+
+
+Shiro授权过程
+
+①. 应用程序或框架代码调用任何 Subject 的hasRole*, checkRole*, isPermitted*,或者checkPermission*方法的变体, 传递任何所需的权限
+
+
+②. Subject 的实例 调用securityManager 的对应的方法.
+Subject 实例（通常为 DelegatingSubject或它的子类）
+
+
+③. SecurityManager 调用 org.apache.shiro.authz.Authorizer 接口的对应方法.默认情况下，authorizer 实例是一个 ModularRealmAuthorizer 实例, 它支持协调任何授权操作过程中的一个或多个Realm 实例
+
+
+④. 每个配置好的 Realm 被检查是否实现了相同的 Authorizer 接口. 如果是, Realm 各自的 hasRole*, checkRole*,isPermitted*，或 checkPermission* 方法将被调用。
+
+
+
+shiro权限认证的三种方式
+1.使用URL实现权限控制
+spring配置shirofiter配置url验证规则
+
+2.使用注解实现权限控制
+@RequiresPermissions({“ceshi.test”})
+@RequiresRoles(“adminRole”)
+
+
+3.使用shiro标签进行权限控制
+
+项目应用
+步骤
+pom文件中引入shiro的依赖,引入shiro-all依赖包
+步骤
+3：在web.xml配置shiro的过滤器，配置过滤请求的地址	
+
+步骤4：创建spring于shiro整合的配置文件，spring-context-shiro.xml，
+
+4.1 在spring-context-shiro.xml中配置shiroFilter，配置登陆页面、系统成功页面、权限不足提示页面、配置url地址拦截规则（anon，不需要认证，authc配置需要认证）
+
+4.2 配置securityManager,在安全管理器中配置自定义realm，配置ehcahce缓存
+步骤5：使用注解实现权限控制
+5.1：(1)在Springmvc配置文件中开启shiro注解
+5.2：(2)在要设置权限的方法上使用shiro注解
+5.3 配置spingmvc的统一异常处理
+步骤六：修改登录方法，构建用户密码令牌，使用shiro完成认证，如果错误抛出异常
+步骤7：创建一张表，t_sys_role_perm或在角色表中添加一个权限字段，类型为text
+
+
+Shiro 如何自实现认证
+  Shiro 的认证过程由 Realm 执行, SecurityManager 会调用 org.apache.shiro.realm.Realm 的 getAuthenticationInfo(AuthenticationToken token) 方法. 实际开发中, 通常提供 org.apache.shiro.realm.AuthenticatingRealm 的实现类, 并在该实现类中提供 doGetAuthenticationInfo(AuthenticationToken token)方法的具体实现
+ 
+
+如何实现自实现授权
+  实际开发中, 通常提供  org.apache.shiro.realm.AuthorizingRealm 的实现类,
+  并提供 doGetAuthorizationInfo(PrincipalCollection principals) 方法的具体实现
+
+
+如何配置在 Spring 中配置使用 Shiro
+  ①. 在 web.xml中配置Shiro的Filter
+  ②. 在 Spring 的配置文件中配置Shiro:
+    > 配置自定义 Realm：实现自定义认证和授权
+    > 配置 Shiro 实体类使用的缓存策略
+    > 配置 SecurityManager
+    > 配置保证 Shiro 内部 Bean 声明周期都得到执行的 Lifecycle Bean 后置处理器
+    > 配置AOP 式方法级权限检查
+    > 配置 Shiro Filter
+
